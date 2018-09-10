@@ -1,4 +1,8 @@
 local cjson = require 'cjson'
+local uuid = require 'uuid'
+
+
+uuid.randomseed(10000 * require('socket').gettime())
 
 
 -- `love.graphics.stacked([arg], foo)` calls `foo` between `love.graphics.push([arg])` and
@@ -75,8 +79,11 @@ local function checkSettings()
 end
 
 
--- Default layer
+-- Default layer, start with black
 layer = love.graphics.newCanvas()
+layer:renderTo(function()
+    love.graphics.clear(0, 0, 0, 1)
+end)
 
 
 -- Copy `ImageData` into a `Canvas` -- useful for restoring a `Canvas` from `:newImageData()`
@@ -169,6 +176,24 @@ local function checkUndo()
 end
 
 
+-- Save a screenshot and return the URL
+local function writeScreenshot()
+    local filename = 'screenshot-' .. uuid.new() .. '.png'
+    layer:newImageData():encode('png', filename)
+    love.thread.getChannel('SCREENSHOT_SAVED'):push(
+        love.filesystem.getSaveDirectory() .. '/' .. filename)
+end
+
+-- Take a screenshot if JS tells us we should
+local function checkScreenshot()
+    local channel = love.thread.getChannel('SCREENSHOT_REQUESTED')
+    local message = channel:pop()
+    if message then
+        writeScreenshot()
+    end
+end
+
+
 -- Actual top-level `love.` callbacks
 
 function love.load()
@@ -183,6 +208,8 @@ function love.update(dt)
     checkReload()
 
     checkUndo()
+
+    checkScreenshot()
 end
 
 function love.draw()
