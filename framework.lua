@@ -73,6 +73,8 @@ local function checkSettings()
                 brush.settings[decoded.name] = decoded.value.text
             elseif brush.settingsShape[decoded.name].type == 'number' then
                 brush.settings[decoded.name] = decoded.value.number
+            elseif brush.settingsShape[decoded.name].type == 'color' then
+                brush.settings[decoded.name] = decoded.value.color
             end
         end
     end
