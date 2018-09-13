@@ -38,7 +38,7 @@ function brush.paint(x, y, dx, dy)
             local w, h = image:getDimensions()
             local scale = love.graphics.getWidth() / w
             if brush.settings.radius and brush.settings.radius > 0 then
-                scale = brush.settings.radius * scale
+                scale = 2 * brush.settings.radius * scale
             end
             love.graphics.draw(image, x, y, 0, scale, scale, 0.5 * w, 0.5 * h)
         end
