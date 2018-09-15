@@ -7,6 +7,7 @@ local effect = moonshine(moonshine.effects.glow)
 
 effect.glow.min_luma = 0
 
+local source = love.audio.newSource('https://raw.githubusercontent.com/nikki93/wat-do/8cb92bc647e4fcdb093bf3954f4382a1f934c0b3/jump.wav', 'static')
 
 brush.settingsShape = {
     text = { type = 'text' },
@@ -17,6 +18,7 @@ brush.settingsShape = {
 
 
 function brush.paint(x, y, dx, dy)
+    source:play()
     effect(function()
         if brush.settings.radius then
             love.graphics.setLineWidth(120 * brush.settings.radius)
