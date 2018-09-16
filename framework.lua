@@ -200,6 +200,16 @@ local function checkScreenshot()
 end
 
 
+-- Select a brush if JS tells us we should
+local function checkSelectBrush()
+    local channel = love.thread.getChannel('SELECT_BRUSH')
+    local message = channel:pop()
+    if message and brushes[message] then
+        selectedBrushName = message
+    end
+end
+
+
 -- Actual top-level `love.` callbacks
 
 function love.load()
@@ -214,6 +224,8 @@ function love.update(dt)
     checkUndo()
 
     checkScreenshot()
+
+    checkSelectBrush()
 end
 
 function love.draw()
@@ -223,9 +235,6 @@ function love.draw()
     end)
 
     love.graphics.print('fps: ' .. love.timer.getFPS(), 20, 20)
-    if brushes['line'] and brushes['line'].settings.width then
-        love.graphics.print('width: ' .. tostring(brushes['line'].settings.width), 20, 60)
-    end
 end
 
 local mouseReleasedSinceLastUndo = true
@@ -236,7 +245,7 @@ end
 
 function love.mousemoved(x, y, dx, dy)
     local selectedBrush = brushes[selectedBrushName]
-    if selectedBrush.paint then
+    if selectedBrush and selectedBrush.paint then
         if mouseReleasedSinceLastUndo then
             saveUndoPoint()
             mouseReleasedSinceLastUndo = false
@@ -269,12 +278,6 @@ function framework.loadBrushes(map)
         brushes[name] = brush
     end
     sendSettingsShapes()
-end
-
-function framework.selectBrush(name)
-    if brushes[name] then
-        selectedBrushName = name
-    end
 end
 
 return framework

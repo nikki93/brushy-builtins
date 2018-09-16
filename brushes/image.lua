@@ -1,13 +1,14 @@
 local brush = {}
 
 brush.settingsShape = {
+    image = { type = 'image' },
     color = { type = 'color' },
-    width = {
+    scale = {
         type = 'number',
-        default = 10,
+        default = 1,
         style = 'slider',
         min = 0,
-        max = 50,
+        max = 2,
     },
 }
 
@@ -23,10 +24,18 @@ function brush.paint(x, y, dx, dy)
         else
             love.graphics.setColor(math.random(), math.random(), math.random())
         end
-        if brush.settings.width then
-            love.graphics.setLineWidth(brush.settings.width)
+        local image = brush.settings.image
+        if image then
+            -- Scale to fit to screen
+            local w, h = image:getDimensions()
+            local scale = love.graphics.getWidth() / w
+            if brush.settings.scale then
+                scale = brush.settings.scale * scale
+            end
+            love.graphics.draw(image, x, y, 0, scale, scale, 0.5 * w, 0.5 * h)
+        else
+            love.graphics.print('no image', x, y)
         end
-        love.graphics.line(x - dx, y - dy, x, y)
     end)
 end
 
