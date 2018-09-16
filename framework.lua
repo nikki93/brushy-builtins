@@ -151,8 +151,11 @@ local function saveUndoPoint()
     -- Save the `layer`
     undoPoint.layerImageData = layer:newImageData()
 
-    -- Push to history
+    -- Push to history and limit it to 150 elements
     table.insert(undoPoints, undoPoint)
+    while #undoPoints > 150 do
+        table.remove(undoPoints, 1)
+    end
 end
 
 -- Step back in undo history
