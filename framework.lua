@@ -40,20 +40,21 @@ function portal.onError(err)
 end
 
 
--- Initialize the `brush` global
-brush = {}
+-- Map of `brush.name` -> `brush`
+local brushes = {}
+
+-- Name of selected brush
+local selectedBrushName
 
 
--- Initialize settings -- must be called after user's top-level code is run
-local function setupSettings()
-    -- Reset `.settings` and clear leftover 'SETTING_VALUE' messages
-    brush.settings = {}
-    love.thread.getChannel('SETTING_VALUE'):clear()
-
-    -- Default `.settingsShape` to `{}` and send it to JS
-    brush.settingsShape = brush.settingsShape or {}
-    love.thread.getChannel('SETTINGS_SHAPE'):clear()
-    love.thread.getChannel('SETTINGS_SHAPE'):push(cjson.encode(brush.settingsShape))
+-- Send `.settingsShape`s of everything to JS
+local function sendSettingsShapes()
+    local settingsShapes = {}
+    for name, brush in pairs(brushes) do
+        settingsShapes[name] = brush.settingsShape
+    end
+    love.thread.getChannel('SETTINGS_SHAPES'):clear()
+    love.thread.getChannel('SETTINGS_SHAPES'):push(cjson.encode(settingsShapes))
 end
 
 -- Check for new setting values sent from JS
@@ -63,18 +64,18 @@ local function checkSettings()
         if json == nil then break end
         local decoded = cjson.decode(json)
 
-
+        local brush = brushes[decoded.brushName]
         if decoded.value == cjson.null then -- `null`? Just clear.
-            brush.settings[decoded.name] = nil
+            brush.settings[decoded.settingName] = nil
         else -- Else handle based on type
-            if brush.settingsShape[decoded.name].type == 'image' then
-                brush.settings[decoded.name] = love.graphics.newImage(decoded.value.uri);
-            elseif brush.settingsShape[decoded.name].type == 'text' then
-                brush.settings[decoded.name] = decoded.value.text
-            elseif brush.settingsShape[decoded.name].type == 'number' then
-                brush.settings[decoded.name] = decoded.value.number
-            elseif brush.settingsShape[decoded.name].type == 'color' then
-                brush.settings[decoded.name] = decoded.value.color
+            if brush.settingsShape[decoded.settingName].type == 'image' then
+                brush.settings[decoded.settingName] = love.graphics.newImage(decoded.value.uri);
+            elseif brush.settingsShape[decoded.settingName].type == 'text' then
+                brush.settings[decoded.settingName] = decoded.value
+            elseif brush.settingsShape[decoded.settingName].type == 'number' then
+                brush.settings[decoded.settingName] = decoded.value
+            elseif brush.settingsShape[decoded.settingName].type == 'color' then
+                brush.settings[decoded.settingName] = decoded.value
             end
         end
     end
@@ -199,8 +200,6 @@ end
 -- Actual top-level `love.` callbacks
 
 function love.load()
-    setupSettings()
-
     loadState()
 end
 
@@ -221,6 +220,9 @@ function love.draw()
     end)
 
     love.graphics.print('fps: ' .. love.timer.getFPS(), 20, 20)
+    if brushes['line'] and brushes['line'].settings.width then
+        love.graphics.print('width: ' .. tostring(brushes['line'].settings.width), 20, 60)
+    end
 end
 
 local mouseReleasedSinceLastUndo = true
@@ -230,7 +232,8 @@ function love.mousereleased()
 end
 
 function love.mousemoved(x, y, dx, dy)
-    if brush.paint then
+    local selectedBrush = brushes[selectedBrushName]
+    if selectedBrush.paint then
         if mouseReleasedSinceLastUndo then
             saveUndoPoint()
             mouseReleasedSinceLastUndo = false
@@ -238,8 +241,37 @@ function love.mousemoved(x, y, dx, dy)
 
         layer:renderTo(function()
             love.graphics.stacked('all', function()
-                brush.paint(x, y, dx, dy)
+                selectedBrush.paint(x, y, dx, dy)
             end)
         end)
     end
 end
+
+
+-- Exported functions
+
+local framework = {}
+
+function framework.loadBrushes(map)
+    for name, brush in pairs(map) do
+        if type(name) ~= 'string' then
+            name = brush.id
+        end
+        assert(type(name) == 'string', "need name for brush")
+        assert(not brushes[name], "brush with name '" .. name .. "' already exists")
+
+        brush.name = name
+        brush.settings = {}
+        brush.settingsShape = brush.settingsShape or {}
+        brushes[name] = brush
+    end
+    sendSettingsShapes()
+end
+
+function framework.selectBrush(name)
+    if brushes[name] then
+        selectedBrushName = name
+    end
+end
+
+return framework
