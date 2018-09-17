@@ -44,7 +44,7 @@ end
 
 
 -- Map of `brush.name` -> `brush`
-local brushes = {}
+brushes = {}
 
 -- Name of selected brush
 local selectedBrushName
