@@ -1,4 +1,6 @@
--- This file should return a table with a bunch of properties defining the brush. We define a
+-- When you edit and save this file it is automatically reloaded by brushy! :)
+
+-- The file should return a table with a bunch of properties defining the brush. We define a
 -- variable `brush` for this table, set properties in it, then return it at the bottom.
 local brush = {}
 
@@ -19,14 +21,14 @@ brush.settingsShape = {
         max = 40,
     },
 
-    -- Here's how you could define an image setting. It's initial value is `nil`. When set, it's
+    -- Here's how you could define an image setting. Its initial value is `nil`. When set, it's
     -- value is a `Image` object (see https://love2d.org/wiki/Image). You can draw this with
     -- `love.graphics.draw` for example. Note that the image is usually pretty large so you may want
-    -- to draw it with scaling.
+    -- to draw it with scaling. Also you can't set default values for images yet. :(
     --
     --   myImageSetting = { type = 'image' },
 
-    -- Here's an example text setting. It's value is just a string when set.
+    -- Here's an example text setting. Its value is just a string when set.
     --
     --   myTextSetting = { type = 'text', default = 'default text' },
 
