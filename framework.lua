@@ -109,41 +109,6 @@ local function renderImageDataToCanvas(imageData, canvas)
 end
 
 
--- Save state to the 'SAVED_STATE' `Channel` to load later
-local function saveState()
-    local state = {}
-
-    -- Save the `layer`
-    state.layerImageData = layer:newImageData()
-
-    -- Push to `Channel` --
-    local channel = love.thread.getChannel('SAVED_STATE')
-    channel:clear()
-    channel:push(state)
-end
-
--- Load state from the 'SAVED_STATE' `Channel`
-local function loadState()
-    local channel = love.thread.getChannel('SAVED_STATE')
-    local state = channel:pop()
-    if not state then return end
-    channel:clear()
-
-    -- Load the `layer`
-    renderImageDataToCanvas(state.layerImageData, layer)
-end
-
--- Handle things to do when JS tells us we're reloading -- for now just saves state
-local function checkReload()
-    local channel = love.thread.getChannel('RELOAD')
-    local message = channel:pop()
-    if message then
-        channel:clear()
-        saveState()
-    end
-end
-
-
 -- Undo history
 local undoPoints = {}
 
@@ -181,6 +146,47 @@ local function checkUndo()
     if message then
         channel:clear()
         undo()
+    end
+end
+
+
+-- Save state to the 'SAVED_STATE' `Channel` to load later
+local function saveState()
+    local state = {}
+
+    -- Save `layer`
+    state.layerImageData = layer:newImageData()
+
+    -- Save `undoPoints`
+    state.undoPoints = undoPoints
+
+    -- Push to `Channel` --
+    local channel = love.thread.getChannel('SAVED_STATE')
+    channel:clear()
+    channel:push(state)
+end
+
+-- Load state from the 'SAVED_STATE' `Channel`
+local function loadState()
+    local channel = love.thread.getChannel('SAVED_STATE')
+    local state = channel:pop()
+    if not state then return end
+    channel:clear()
+
+    -- Load `layer`
+    renderImageDataToCanvas(state.layerImageData, layer)
+
+    -- Load `undoPoints`
+    undoPoints = state.undoPoints
+end
+
+-- Handle things to do when JS tells us we're reloading -- for now just saves state
+local function checkReload()
+    local channel = love.thread.getChannel('RELOAD')
+    local message = channel:pop()
+    if message then
+        channel:clear()
+        saveState()
     end
 end
 
