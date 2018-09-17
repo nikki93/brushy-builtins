@@ -1,3 +1,6 @@
+local framework = {}
+
+
 local cjson = require 'cjson'
 local uuid = require 'uuid'
 
@@ -210,6 +213,17 @@ local function checkSelectBrush()
 end
 
 
+-- Load the code brush if JS tells us we should
+local function checkLoadCodeBrush()
+    local channel = love.thread.getChannel('LOAD_CODE_BRUSH')
+    local message = channel:pop()
+    channel:clear()
+    if message then
+        framework.loadBrushes { code = require(message) }
+    end
+end
+
+
 -- Actual top-level `love.` callbacks
 
 function love.load()
@@ -217,6 +231,8 @@ function love.load()
 end
 
 function love.update(dt)
+    checkLoadCodeBrush()
+
     checkSettings()
 
     checkReload()
@@ -260,10 +276,7 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 
--- Exported functions
-
-local framework = {}
-
+-- Load brushes given a map of brush name -> brush object (usually `require`'d from somewhere)
 function framework.loadBrushes(map)
     for name, brush in pairs(map) do
         if type(name) ~= 'string' then
@@ -279,5 +292,6 @@ function framework.loadBrushes(map)
     end
     sendSettingsShapes()
 end
+
 
 return framework
