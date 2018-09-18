@@ -276,7 +276,6 @@ function framework.loadBrushes(map)
             name = brush.id
         end
         assert(type(name) == 'string', "need name for brush")
-        assert(not brushes[name], "brush with name '" .. name .. "' already exists")
 
         brush.name = name
         brush.settings = {}
