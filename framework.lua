@@ -30,19 +30,6 @@ function love.graphics.stacked(...)
 end
 
 
--- Override `print` to tee to JS
-local oldPrint = print
-function print(...)
-    oldPrint(...)
-    love.thread.getChannel('LOG'):push(cjson.encode({ ... }))
-end
-
--- Override `portal.onError` to tee to JS
-function portal.onError(err)
-    love.thread.getChannel('ERROR'):push(cjson.encode({ error = err }))
-end
-
-
 -- Map of `brush.name` -> `brush`
 brushes = {}
 
