@@ -96,44 +96,67 @@ local function renderImageDataToCanvas(imageData, canvas)
 end
 
 
--- Undo history
-local undoPoints = {}
+-- Undo / redo state
+local undos = {} -- Sequence of undo states with oldest first, current state last
+local redos = {} -- Sequence of redo states with next to redo last, most 'future' first
 
--- Save to the history
-local function saveUndoPoint()
-    local undoPoint = {}
+-- Add to the undo history
+local function pushUndo()
+    local state = {}
 
     -- Save the `layer`
-    undoPoint.layerImageData = layer:newImageData()
+    state.layerImageData = layer:newImageData()
 
     -- Push to history and limit it to 150 elements
-    table.insert(undoPoints, undoPoint)
-    while #undoPoints > 150 do
-        table.remove(undoPoints, 1)
+    table.insert(undos, state)
+    while #undos > 150 do
+        table.remove(undos, 1)
     end
-end
 
--- Step back in undo history
-local function undo()
-    if #undoPoints > 0 then
-        local undoPoint = table.remove(undoPoints)
-
-        -- Load the `layer`
-        renderImageDataToCanvas(undoPoint.layerImageData, layer)
-
-        -- Now might be a good time to GC
+    -- Clear the redo 'future'
+    if #redos > 0 then
+        redos = {}
+        love.thread.getChannel('REDO_UNAVAILABLE'):push('')
         collectgarbage()
     end
 end
 
--- Undo if JS tells us we should
-local function checkUndo()
-    local channel = love.thread.getChannel('UNDO')
-    local message = channel:pop()
-    if message then
-        channel:clear()
-        undo()
+-- Load the current state in the undo history
+local function loadUndo()
+    local state = undos[#undos]
+
+    -- Load the `layer`
+    renderImageDataToCanvas(state.layerImageData, layer)
+end
+
+-- Step back in the undo history
+local function undo()
+    if #undos > 1 then
+        -- Swap from `undos` to `redos`
+        table.insert(redos, table.remove(undos))
+        loadUndo()
     end
+    love.thread.getChannel('REDO_AVAILABLE'):push('')
+end
+
+-- Step forward in the redo 'future'
+local function redo()
+    if #redos > 0 then
+        -- Swap from `redos` to `undos`
+        table.insert(undos, table.remove(redos))
+        loadUndo()
+    end
+    if #redos == 0 then
+        love.thread.getChannel('REDO_UNAVAILABLE'):push('')
+    end
+end
+
+-- Undo or redo if JS tells us we should do either
+local function checkUndoRedo()
+    local shouldUndo = love.thread.getChannel('UNDO'):pop()
+    if shouldUndo then undo() end
+    local shouldRedo = love.thread.getChannel('REDO'):pop()
+    if shouldRedo then redo() end
 end
 
 
@@ -144,8 +167,9 @@ local function saveState()
     -- Save `layer`
     state.layerImageData = layer:newImageData()
 
-    -- Save `undoPoints`
-    state.undoPoints = undoPoints
+    -- Save `undos` and `redos`
+    state.undos = undos
+    state.redos = redos
 
     -- Push to `Channel` --
     local channel = love.thread.getChannel('SAVED_STATE')
@@ -163,8 +187,9 @@ local function loadState()
     -- Load `layer`
     renderImageDataToCanvas(state.layerImageData, layer)
 
-    -- Load `undoPoints`
-    undoPoints = state.undoPoints
+    -- Load `undos` and `redos`
+    undos = state.undos
+    redos = state.redos
 end
 
 -- Handle things to do when JS tells us we're reloading -- for now just saves state
@@ -230,7 +255,7 @@ function love.update(dt)
 
     checkReload()
 
-    checkUndo()
+    checkUndoRedo()
 
     checkScreenshot()
 
@@ -246,20 +271,13 @@ function love.draw()
     love.graphics.print('fps: ' .. love.timer.getFPS(), 20, 20)
 end
 
-local mouseReleasedSinceLastUndo = true
-
 function love.mousereleased()
-    mouseReleasedSinceLastUndo = true
+    pushUndo()
 end
 
 function love.mousemoved(x, y, dx, dy)
     local selectedBrush = brushes[selectedBrushName]
     if selectedBrush and selectedBrush.paint then
-        if mouseReleasedSinceLastUndo then
-            saveUndoPoint()
-            mouseReleasedSinceLastUndo = false
-        end
-
         layer:renderTo(function()
             love.graphics.stacked('all', function()
                 selectedBrush.paint(x, y, dx, dy)
@@ -284,6 +302,10 @@ function framework.loadBrushes(map)
     end
     sendSettingsShapes()
 end
+
+
+-- First undo state!
+pushUndo()
 
 
 return framework
