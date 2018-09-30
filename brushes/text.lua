@@ -36,7 +36,7 @@ function brush.paint(x, y, dx, dy)
 
         -- Draw centered around the touch
         local width = fonts[size]:getWidth(brush.settings.text)
-        local height = fonts[size]:getHeight(brush.settings.text)
+        local height = fonts[size]:getHeight()
         love.graphics.print(brush.settings.text, x, y, 0, 1, 1, 0.5 * width, 0.5 * height)
     end)
 end
