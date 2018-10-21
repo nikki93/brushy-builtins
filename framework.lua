@@ -260,6 +260,11 @@ function love.update(dt)
     checkScreenshot()
 
     checkSelectBrush()
+
+    local selectedBrush = brushes[selectedBrushName]
+    if selectedBrush and selectedBrush.update then
+        selectedBrush.update(dt)
+    end
 end
 
 function love.draw()
